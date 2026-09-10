@@ -1,0 +1,210 @@
+// Motor de sobrecarga progresiva.
+//
+// Idea: doble progresión (primero reps dentro del rango, luego carga) con dos matices que vienen
+// de la literatura:
+//   1) El salto de carga se calcula como un % del peso actual, con la banda de la ACSM (2009):
+//      2-4 % en músculos pequeños, hasta 5-10 % en los grandes. Nunca por debajo del incremento
+//      mínimo que hay en el gimnasio (`step` del ejercicio).
+//   2) Cuando el incremento mínimo disponible obliga a un salto mayor que esa banda —el caso típico
+//      de las mancuernas en laterales: de 12,5 a 15 kg son 20 %— se aplica la regla 2×2 de la NSCA:
+//      hay que superar el tope de reps en dos sesiones seguidas (o sacar 2 reps de más) antes de subir.
+//
+// Cada tipo de serie tiene su propio criterio de «listo para subir», porque el objetivo cambia:
+// en myo-reps manda la serie de activación, en rest-pause el total de reps del cluster y en
+// drop set las reps del primer escalón.
+
+import { profileOf, myoPlan, muscleName, MYO_TARGET } from './catalog.js';
+import { num, setReps, setWeight, leadReps } from './sets.js';
+
+export const roundToStep = (w, step) => (step > 0 ? Math.round(w / step) * step : Math.round(w));
+
+// Incremento de carga a aplicar sobre un peso dado.
+export function increment(weight, exercise) {
+  const step = exercise.step || profileOf(exercise.muscle).step || 2.5;
+  const [lo, hi] = profileOf(exercise.muscle).pct;
+  const ideal = roundToStep((num(weight) || 0) * (lo / 100), step);
+  const inc = Math.max(step, ideal);
+  const pct = weight > 0 ? (inc / weight) * 100 : 0;
+  return { inc, step, pct, band: [lo, hi], oversized: pct > hi + 0.01 };
+}
+
+// Texto corto del perfil de un ejercicio, para mostrarlo en la ficha.
+export function profileSummary(exercise) {
+  const p = profileOf(exercise.muscle);
+  const step = exercise.step || p.step;
+  return `saltos de ${step} kg · banda ${p.pct[0]}-${p.pct[1]} % · objetivo ≈${p.weekly} %/semana`;
+}
+
+export const weeklyTarget = (muscle) => profileOf(muscle).weekly;
+
+// ---------- ¿La última sesión pide subir carga? ----------
+// Devuelve { ready, extra, detail } donde `extra` indica que además sobró margen (reps de más).
+function readyNormal(entry, plan) {
+  const sets = (entry.sets || []).filter((s) => num(s.r) != null);
+  if (!sets.length) return { ready: false };
+  const top = plan.repsMax ?? plan.repsMin ?? 8;
+  const rirCap = plan.rirMax ?? 1;
+  const repsOk = sets.every((s) => num(s.r) >= top);
+  const rirOk = sets.every((s) => num(s.rir) == null || num(s.rir) <= rirCap);
+  const extra = sets.every((s) => num(s.r) >= top + 2);
+  const low = sets.filter((s) => num(s.r) < (plan.repsMin ?? top)).length;
+  return {
+    ready: repsOk && rirOk,
+    repsOk,
+    rirOk,
+    extra,
+    deload: low > sets.length / 2,
+    detail: `${sets.map((s) => s.r).join(' · ')} reps`,
+  };
+}
+
+function readyMyo(entry) {
+  const set = (entry.sets || [])[0];
+  const act = num(set?.r);
+  if (act == null) return { ready: false };
+  const plan = myoPlan(act);
+  return {
+    ready: act > MYO_TARGET[1],
+    extra: plan.verdict === 'light',
+    deload: act < 6,
+    detail: `activación de ${act} reps`,
+  };
+}
+
+function readyRestPause(entry, plan) {
+  const set = (entry.sets || [])[0];
+  const total = setReps(set, 'restpause');
+  const target = (plan.scheme || []).reduce((a, b) => a + b, 0);
+  if (!total) return { ready: false };
+  return {
+    ready: total >= target,
+    extra: total >= target + 3,
+    deload: total < target * 0.8,
+    detail: `${total} de ${target} reps`,
+  };
+}
+
+function readyDrop(entry, plan) {
+  const set = (entry.sets || [])[0];
+  const first = leadReps(set, 'dropset');
+  const target = (plan.dropScheme || [])[0] ?? 6;
+  if (first == null) return { ready: false };
+  return { ready: first >= target, extra: first >= target + 2, deload: first < target - 2, detail: `${first} reps en el primer escalón` };
+}
+
+function readiness(entry, plan) {
+  switch (entry.type) {
+    case 'myo': return readyMyo(entry);
+    case 'restpause': return readyRestPause(entry, plan);
+    case 'dropset': return readyDrop(entry, plan);
+    default: return readyNormal(entry, plan);
+  }
+}
+
+// ---------- Sugerencia ----------
+// history: entradas pasadas de este ejercicio, de la más reciente a la más antigua.
+// Devuelve { weight, reps, action, reason, inc } — `action` ∈ up | reps | hold | down | start.
+export function suggest({ exercise, plan, history = [] }) {
+  const last = history[0];
+  if (!last) {
+    return { weight: null, reps: plan.repsMin ?? null, action: 'start', reason: 'Primera vez: busca un peso que te deje en el RIR objetivo y quedará como referencia.' };
+  }
+
+  const type = plan.type;
+  // Ojo: 0 es un peso válido (peso corporal), así que no vale un simple `||`.
+  const weights = (last.sets || []).map((s) => setWeight(s, type)).filter((w) => w != null);
+  const lastWeight = type === 'dropset'
+    ? setWeight((last.sets || [])[0], 'dropset')
+    : (weights.length ? Math.max(...weights) : null);
+
+  if (lastWeight == null) {
+    return { weight: null, reps: plan.repsMin ?? null, action: 'start', reason: 'La última sesión quedó sin registrar peso.' };
+  }
+
+  const r = readiness(last, plan);
+  const { inc, pct, band, oversized } = increment(lastWeight, exercise);
+
+  if (r.deload) {
+    return {
+      weight: Math.max(0, roundToStep(lastWeight - inc, exercise.step || inc)),
+      reps: plan.repsMin ?? null,
+      action: 'down',
+      inc: -inc,
+      reason: `Te quedaste corto (${r.detail}). Baja ${inc} kg y reconstruye desde ahí.`,
+    };
+  }
+
+  if (r.ready) {
+    // Salto forzado por el material: exige la regla 2×2 antes de subir.
+    if (oversized && !r.extra) {
+      const prev = history[1];
+      const prevReady = prev && readiness(prev, plan).ready;
+      if (!prevReady) {
+        return {
+          weight: lastWeight,
+          reps: plan.repsMax != null ? plan.repsMax + 1 : null,
+          action: 'reps',
+          reason: `Con ${lastWeight} kg el siguiente escalón son ${inc} kg (${pct.toFixed(0)} %), por encima del ${band[1]} % que le corresponde a ${muscleName(exercise.muscle).toLowerCase()}. Repite el peso y súmale reps: al encadenar dos sesiones cumpliendo el objetivo, subes.`,
+        };
+      }
+    }
+    return {
+      weight: roundToStep(lastWeight + inc, exercise.step || inc),
+      reps: plan.repsMin ?? null,
+      action: 'up',
+      inc,
+      reason: `Cumpliste el objetivo (${r.detail}). Sube ${inc} kg (${pct.toFixed(1)} %) y vuelve a la parte baja del rango.`,
+    };
+  }
+
+  // Llegó a las reps pero con demasiado margen: el trabajo pendiente es de intensidad, no de carga.
+  if (r.repsOk && !r.rirOk) {
+    return {
+      weight: lastWeight,
+      reps: plan.repsMax ?? plan.repsMin ?? null,
+      action: 'hold',
+      reason: `Sacaste las reps (${r.detail}) pero con más margen del que pide el objetivo (RIR ${plan.rir}). Mismo peso y apriétalo hasta ahí; cuando lo cumplas, sube.`,
+    };
+  }
+
+  if (type === 'myo') {
+    const act = num((last.sets || [])[0]?.r);
+    return {
+      weight: lastWeight,
+      reps: null,
+      action: 'hold',
+      reason: `Activación de ${act} reps: aún dentro de la banda objetivo (${MYO_TARGET[0]}-${MYO_TARGET[1]}). Mantén el peso y busca más reps.`,
+    };
+  }
+
+  return {
+    weight: lastWeight,
+    reps: Math.min((plan.repsMax ?? 99), (Math.max(...(last.sets || []).map((s) => num(s.r) || 0)) || 0) + 1) || plan.repsMin,
+    action: 'reps',
+    reason: `Mismo peso y una rep más que la última vez (${r.detail || 'sin datos'}). Cuando llegues al tope del rango en todas las series, toca subir.`,
+  };
+}
+
+// ---------- Pesos sugeridos para un drop set ----------
+export function dropWeights(top, exercise, steps, pct = 15) {
+  const step = exercise.step || 2.5;
+  const out = [];
+  let w = num(top) || 0;
+  for (let i = 0; i < steps; i += 1) {
+    out.push(w);
+    w = Math.max(step, roundToStep(w * (1 - pct / 100), step));
+  }
+  return out;
+}
+
+// ---------- Progresión real frente al objetivo ----------
+// serie: [{ week, value }] de e1RM. Devuelve el % de cambio semanal medio.
+export function weeklyChange(points) {
+  const vals = points.filter((p) => p.value != null);
+  if (vals.length < 2) return null;
+  const first = vals[0];
+  const last = vals[vals.length - 1];
+  const weeks = Math.max(1, vals.length - 1);
+  if (!first.value) return null;
+  return ((last.value / first.value) ** (1 / weeks) - 1) * 100;
+}
