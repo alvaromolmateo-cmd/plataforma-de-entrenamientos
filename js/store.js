@@ -8,16 +8,12 @@ import { emptySet } from './sets.js';
 import { ROUTINE_DAYS, ROUTINE_START, SEED_SESSIONS } from './seed.js';
 
 const STORAGE_KEY = 'plataforma-entrenamientos:data';
-export const DATA_VERSION = 1;
+export const DATA_VERSION = 2;
 
 export const DEFAULT_SETTINGS = {
   name: '',
   motto: 'Déjate los huevos. Del resto me encargo yo.',
   bodyweight: null,
-  restDefault: 120,
-  autoTimer: true,
-  sound: true,
-  vibrate: true,
   theme: 'auto',
 };
 
@@ -60,10 +56,7 @@ export function buildSession(routine, dayId, date) {
 
 // Número de filas de serie que toca preparar según el tipo.
 function plannedSets(item) {
-  const total = item.type === 'normal'
-    ? (item.sets || 1) + (item.extra?.count || 0)
-    : (item.sets || 1);
-  return Array.from({ length: Math.max(1, total) }, () => emptySet(item.type, item));
+  return Array.from({ length: Math.max(1, item.sets || 1) }, () => emptySet(item.type, item));
 }
 
 function seedSessions(routine) {
@@ -128,7 +121,8 @@ function migrate(data) {
         id: d.id || uid(),
         name: d.name || 'Día',
         focus: d.focus || '',
-        items: (Array.isArray(d.items) ? d.items : []).map((it) => ({ ...it, id: it.id || uid() })),
+        // v2: los ejercicios de la rutina ya no guardan descanso cronometrado ni serie extra.
+        items: (Array.isArray(d.items) ? d.items : []).map(({ rest, extra, ...it }) => ({ ...it, id: it.id || uid() })),
       })),
     }
     : defaultRoutine();
@@ -148,7 +142,9 @@ function migrate(data) {
   }
   if (out.activeId && !out.sessions[out.activeId]) out.activeId = null;
 
-  out.settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+  // Solo las preferencias que siguen existiendo: así se van las de la barra de descanso (v1).
+  const settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+  out.settings = Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map((k) => [k, settings[k]]));
   delete out.exportedAt;
   return out;
 }
@@ -175,6 +171,8 @@ function save() {
     console.warn('No se pudo guardar:', err);
   }
 }
+
+save(); // deja escrito el resultado de la migración sin esperar al primer cambio
 
 const emit = () => listeners.forEach((fn) => fn(state));
 
@@ -277,7 +275,7 @@ export function addEntry(sessionId, exerciseId, type = 'normal') {
   update((st) => {
     const s = st.sessions[sessionId];
     if (!s) return;
-    const plan = { exerciseId, type, sets: 3, repsMin: 8, repsMax: 10, rir: '0-1', rirMax: 1, rest: st.settings.restDefault };
+    const plan = { exerciseId, type, sets: 3, repsMin: 8, repsMax: 10, rir: '0-1', rirMax: 1 };
     s.entries.push({ id: uid(), exerciseId, type, plan, note: '', sets: plannedSets(plan) });
   });
 }
@@ -361,7 +359,7 @@ export function addItem(dayId, exerciseId, type = 'normal') {
     if (!d) return;
     d.items.push({
       id: uid(), exerciseId, type, sets: type === 'normal' ? 3 : 1,
-      repsMin: 8, repsMax: 10, rir: '0-1', rirMax: 1, rest: st.settings.restDefault, note: '',
+      repsMin: 8, repsMax: 10, rir: '0-1', rirMax: 1, note: '',
       ...(type === 'restpause' ? { scheme: [10, 10, 10], clusterRest: 20 } : {}),
       ...(type === 'dropset' ? { dropScheme: [6, 8], dropSets: 2, dropPct: 20, dropFail: true } : {}),
     });

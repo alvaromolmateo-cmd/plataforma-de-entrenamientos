@@ -8,15 +8,16 @@
 export const ROUTINE_START = '2026-08-17'; // lunes de la semana 1
 
 // Atajos para no repetir campos: n = series normales, myo, rp = rest-pause, drop = drop set.
-const n = (exerciseId, sets, repsMin, repsMax, rir, rirMax, extra = {}) => ({
-  exerciseId, type: 'normal', sets, repsMin, repsMax, rir, rirMax, rest: 120, ...extra,
+// Los descansos no se guardan: van por sensaciones y los de las myo-reps son siempre los mismos.
+const n = (exerciseId, sets, repsMin, repsMax, rir, rirMax, opts = {}) => ({
+  exerciseId, type: 'normal', sets, repsMin, repsMax, rir, rirMax, ...opts,
 });
-const myo = (exerciseId, extra = {}) => ({ exerciseId, type: 'myo', sets: 1, rest: 120, ...extra });
-const rp = (exerciseId, scheme, clusterRest, extra = {}) => ({
-  exerciseId, type: 'restpause', sets: 1, scheme, clusterRest, rest: 180, ...extra,
+const myo = (exerciseId, opts = {}) => ({ exerciseId, type: 'myo', sets: 1, ...opts });
+const rp = (exerciseId, scheme, clusterRest, opts = {}) => ({
+  exerciseId, type: 'restpause', sets: 1, scheme, clusterRest, ...opts,
 });
-const drop = (exerciseId, dropScheme, dropSets, dropPct, extra = {}) => ({
-  exerciseId, type: 'dropset', sets: dropSets, dropScheme, dropFail: true, dropPct, rest: 150, ...extra,
+const drop = (exerciseId, dropScheme, dropSets, dropPct, opts = {}) => ({
+  exerciseId, type: 'dropset', sets: dropSets, dropScheme, dropFail: true, dropPct, ...opts,
 });
 
 export const ROUTINE_DAYS = [
@@ -30,16 +31,14 @@ export const ROUTINE_DAYS = [
         repsText: '7+6',
         tempo: '7 reps lentas aguantando 1" isométrico + 6 normales',
       }),
-      n('gemelo', 3, 15, 15, '0-1', 1, { rest: 90 }),
+      n('gemelo', 3, 15, 15, '0-1', 1),
       n('hack-squat', 3, 5, 8, '1-0', 1, {
         tempo: '3" de bajada + 1" isométrico',
         note: 'Series descendentes',
-        extra: { count: 1, reps: 8, note: 'baby reps al fallo' },
-        rest: 180,
       }),
       rp('prensa', [8, 5, 5, 3, 3, 3, 3], 15),
       drop('extension-cuadriceps', [4, 6, 8, 10, 12], 2, 15, { note: 'Descendente hasta el fallo' }),
-      myo('abdominales-maquina', { rest: 90 }),
+      myo('abdominales-maquina'),
     ],
   },
   {
@@ -48,13 +47,13 @@ export const ROUTINE_DAYS = [
     focus: 'Brazo + Espalda',
     items: [
       myo('press-militar-mancuerna'),
-      myo('laterales-mancuerna', { note: 'En banco, eje lateral', rest: 90 }),
-      myo('posterior-polea', { rest: 90 }),
-      myo('curl-biceps-polea', { note: 'A una mano, con banco', rest: 90 }),
-      n('triceps-cruzado', 3, 8, 10, 'fallo', 0, { tempo: 'reps lentas', rest: 90 }),
-      n('jalon', 2, 5, 7, '1', 1, { rest: 150 }),
+      myo('laterales-mancuerna', { note: 'En banco, eje lateral' }),
+      myo('posterior-polea'),
+      myo('curl-biceps-polea', { note: 'A una mano, con banco' }),
+      n('triceps-cruzado', 3, 8, 10, 'fallo', 0, { tempo: 'reps lentas' }),
+      n('jalon', 2, 5, 7, '1', 1),
       n('remo-polea-alta', 3, 8, 8, '0', 0),
-      drop('remo-t', [6, 8], 2, 25, { clusterRest: 30, note: '30" de descanso entre series' }),
+      drop('remo-t', [6, 8], 2, 25),
       n('pull-over', 2, 6, 8, '0', 0, { tempo: 'máximo estiramiento' }),
     ],
   },
@@ -66,11 +65,11 @@ export const ROUTINE_DAYS = [
       myo('extension-cuadriceps'),
       myo('aductor'),
       myo('abductor'),
-      n('gemelo', 3, 15, 15, '0-1', 1, { rest: 90 }),
-      n('sentadilla-bulgara', 3, 5, 7, '0-1', 1, { rest: 150 }),
+      n('gemelo', 3, 15, 15, '0-1', 1),
+      n('sentadilla-bulgara', 3, 5, 7, '0-1', 1),
       rp('hip-thrust', [10, 10, 10], 30),
-      n('peso-muerto-rumano', 2, 8, 8, '0', 0, { tempo: '3" de bajada + 2" isométrico', rest: 150 }),
-      n('abdominales-polea', 3, 8, 8, '0', 0, { rest: 90 }),
+      n('peso-muerto-rumano', 2, 8, 8, '0', 0, { tempo: '3" de bajada + 2" isométrico' }),
+      n('abdominales-polea', 3, 8, 8, '0', 0),
     ],
   },
   {
@@ -78,14 +77,14 @@ export const ROUTINE_DAYS = [
     name: 'Día 4',
     focus: 'Brazo + Pecho',
     items: [
-      n('laterales-polea', 3, 10, 12, '0-1', 1, { note: 'Eje escapular, con muñequeras', rest: 90 }),
-      myo('posterior-polea', { rest: 90 }),
-      myo('triceps-barra', { rest: 90 }),
-      n('curl-biceps-inclinado', 3, 8, 8, '1·1·0', 1, { note: 'Codos apoyados', rest: 90 }),
-      n('press-pectoral-maquina', 3, 5, 8, '0-1', 1, { note: 'Series descendentes', rest: 150 }),
-      n('press-inclinado-mancuernas', 2, 8, 8, '0-1', 1, { tempo: 'bajadas lentas', rest: 150 }),
+      n('laterales-polea', 3, 10, 12, '0-1', 1, { note: 'Eje escapular, con muñequeras' }),
+      myo('posterior-polea'),
+      myo('triceps-barra'),
+      n('curl-biceps-inclinado', 3, 8, 8, '1·1·0', 1, { note: 'Codos apoyados' }),
+      n('press-pectoral-maquina', 3, 5, 8, '0-1', 1, { note: 'Series descendentes' }),
+      n('press-inclinado-mancuernas', 2, 8, 8, '0-1', 1, { tempo: 'bajadas lentas' }),
       n('fondos', 3, 6, 8, 'fallo', 0),
-      myo('laterales-mancuerna', { note: 'Eje lateral', rest: 90 }),
+      myo('laterales-mancuerna', { note: 'Eje lateral' }),
     ],
   },
 ];

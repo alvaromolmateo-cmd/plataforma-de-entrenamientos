@@ -44,7 +44,7 @@ export function render(ctx) {
 
     ${sessions.length
       ? sessions.map((s) => sessionCard(s)).join('')
-      : emptyState('Ningún entreno registrado esta semana.', '<a class="btn btn-primary" href="#/entrenar">Entrenar ahora</a>')}
+      : emptyState('Ningún entreno registrado esta semana.', '<a class="btn btn-primary" href="#/entreno">Entrenar ahora</a>')}
   `;
 }
 
@@ -80,7 +80,7 @@ export function mount(root, ctx) {
 
   root.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => {
     reopenSession(b.dataset.edit);
-    location.hash = '#/entrenar';
+    location.hash = '#/entreno';
   }));
 
   root.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openDetail(b.dataset.detail)));
@@ -136,7 +136,7 @@ function openDetail(id) {
       panel.querySelector('[data-edit]').addEventListener('click', () => {
         reopenSession(id);
         closeModal();
-        location.hash = '#/entrenar';
+        location.hash = '#/entreno';
       });
     },
   });

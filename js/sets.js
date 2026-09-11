@@ -2,7 +2,7 @@
 //
 // Cada entrada de ejercicio guarda un array `sets`. La forma de cada serie depende del tipo:
 //   normal     { w, r, rir, raw? }                     una serie de trabajo
-//   myo        { w, r, rir, minis:[n,n,n] }            activación + mini-series
+//   myo        { w, r, rir, minis:[n,n,n] }            activación + 2 mini-series + serie final al fallo
 //   restpause  { w, clusters:[8,5,5,3,3,3,3] }         una sola serie troceada
 //   dropset    { drops:[{w,r}, …] }                    cascada de bajadas de peso
 // `w` a 0 significa peso corporal (ejercicios con bw: true).

@@ -4,7 +4,7 @@ Plataforma personal de entrenamientos: la libreta del gimnasio, pero que hace la
 Registra la sesión en vivo, calcula la sobrecarga progresiva que toca en cada ejercicio y saca las
 estadísticas que de verdad dicen si estás progresando.
 
-**En marcha:** https://alvaromolmateo-cmd.github.io/plataforma-de-entrenamientos/
+**En marcha:** https://alvaromolmateo-cmd.github.io/gym-tracker/
 
 Aplicación web instalable (PWA), sin build ni dependencias: HTML, CSS y módulos ES. Todo se guarda
 en el dispositivo (`localStorage`), funciona sin cobertura y se puede exportar a JSON.
@@ -13,23 +13,27 @@ en el dispositivo (`localStorage`), funciona sin cobertura y se puede exportar a
 
 ## Qué hace
 
-### Entrenar
+### Entreno
 La vista principal. Propone el día que toca, y dentro de cada ejercicio muestra:
 
-- **La prescripción** tal cual la puso el entrenador: series, reps, RIR, tempo y notas.
+- **La prescripción** tal cual la puso el entrenador: series, reps, RIR, tempo, descripción y notas.
 - **Qué hacer hoy**: peso y reps sugeridos por el motor de progresión, con el motivo explicado.
 - **La última vez**: lo que levantaste, con tus anotaciones, y un botón para copiar los pesos.
 - **Las casillas para apuntar**, adaptadas al tipo de serie (normales, myo-reps, rest-pause, drop set).
-- **Temporizador de descanso** que arranca solo al marcar una serie, con aviso sonoro y vibración.
 - **Anotaciones** por ejercicio y nota del día al cerrar, como las que escribes en rojo en la libreta.
+
+**Sin cronómetros de descanso**: se descansa por sensaciones. Los únicos pautados son los de las
+myo-reps, y ahí la app se limita a recordarte los 40" y los 20"; no hay temporizador que mirar en
+mitad de la serie.
 
 ### Historial
 Una semana por pantalla, con sus cuatro días, todo lo levantado, los récords del día y tus notas.
 Se puede retomar, editar la fecha o borrar cualquier entreno.
 
 ### Rutina
-La planificación actual, editable. Cambias series, reps, RIR, tempo, esquemas o el tipo de serie y
-sale reflejado en el siguiente entreno. Muestra el volumen semanal planificado por grupo muscular.
+La planificación actual, editable. Cambias series, reps, RIR, tempo, esquemas, el tipo de serie o el
+**texto descriptivo de cada ejercicio** y sale reflejado en el siguiente entreno. Muestra el volumen
+semanal planificado por grupo muscular.
 
 ### Progreso
 Tonelaje por semana, volumen por grupo muscular contra el rango de referencia, progresión real
@@ -108,18 +112,21 @@ no carga.
 
 ## Myo-reps
 
-Se aplica la tabla del entrenador. Serie de activación al fallo, 40" de descanso y 3 mini-series con
-20" entre ellas; la última, al fallo:
+Secuencia del entrenador, siempre la misma:
 
-| Si en la activación llegas a | Mini-series |
+**1.ª serie al fallo → 40" → mini-serie → 20" → mini-serie → 20" → serie final al fallo.**
+
+Las reps de las dos mini-series salen de la tabla, según lo que hayas sacado en la de activación:
+
+| Si en la activación llegas a | Cada mini-serie |
 |---|---|
-| 6-8 reps | 3 × 2 |
-| 9-12 reps | 3 × 3 |
-| 13-16 reps | 3 × 4 |
-| 17-20 reps | 3 × 5 |
+| 6-8 reps | 2 reps |
+| 9-12 reps | 3 reps |
+| 13-16 reps | 4 reps |
+| 17-20 reps | 5 reps |
 
 En cuanto apuntas las repeticiones de la activación, la app te dice cuántas tocan en cada mini-serie
-y el temporizador va con los descansos correctos. Por debajo de 6 avisa de que el peso se ha ido;
+y te recuerda los descansos (no los cronometra). Por debajo de 6 avisa de que el peso se ha ido;
 por encima de 20, de que es demasiado ligero.
 
 ---
@@ -166,10 +173,10 @@ js/
   sets.js             matemática de las series: reps, tonelaje, series efectivas, 1RM
   progression.js      motor de sobrecarga progresiva
   metrics.js          agregados: semanas, volumen por grupo, récords, adherencia
-  timer.js            temporizador de descanso y cronómetro de sesión
+  timer.js            cronómetro de sesión
   charts.js           gráficas SVG a mano
   ui.js               escape, iconos, formato, modal y avisos
-  views/              entrenar, historial, rutina, progreso, ejercicios, ajustes
+  views/              entreno, historial, rutina, progreso, ejercicios, ajustes
 tools/make-icons.js   genera los iconos PNG de la PWA sin dependencias
 sw.js                 service worker (red primero, caché si falla)
 ```

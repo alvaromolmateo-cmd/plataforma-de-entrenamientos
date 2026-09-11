@@ -134,6 +134,7 @@ button { font: inherit; color: inherit; }
 small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 .muted { color: var(--muted); font-size: 13px; }
 .hint { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+.fld + .hint { margin: -6px 0 12px; } /* pie de un campo: pegado a el, no al siguiente */
 .hand { font-family: var(--hand); }
 .warn { color: var(--warn); font-weight: 600; }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -255,9 +256,6 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 .seg-btn:hover { color: var(--text); }
 .seg-btn.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
 
-.toggle-list { display: flex; flex-direction: column; gap: 8px; }
-.toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
-.toggle input { width: 18px; height: 18px; accent-color: var(--primary); }
 
 /* Tiles y stats */
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
@@ -292,7 +290,7 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 .empty { display: grid; place-items: center; gap: 10px; padding: 40px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line-2); border-radius: var(--radius); }
 .empty .ic { width: 28px; height: 28px; color: var(--line-2); }
 
-/* ---------- Entrenar: arranque ---------- */
+/* ---------- Entreno: arranque ---------- */
 .card-pending { border-color: var(--accent); }
 .pending-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .pending-row:last-child { border-bottom: 0; }
@@ -327,7 +325,7 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 .summary-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .summary-row b { color: var(--text); font-size: 14.5px; }
 
-/* ---------- Entrenar: sesión ---------- */
+/* ---------- Entreno: sesión ---------- */
 .session-head {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -408,7 +406,7 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 .set-ok.sm { width: 36px; height: 40px; }
 
 /* Myo-reps */
-.myo-act { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+.myo-act { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; align-items: end; margin-bottom: 10px; }
 .myo-act label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-2); }
 .myo-guide { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--text-2); margin-bottom: 10px; }
 .myo-guide b { color: var(--text); }
@@ -423,6 +421,7 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 .mini > .cell-input { grid-area: input; }
 .mini > .set-ok { grid-area: ok; }
 .mini.is-filled { color: var(--primary-strong); }
+.mini-fail > span { color: var(--primary-strong); }
 
 /* Rest-pause */
 .rp-top { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -437,24 +436,6 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
 
 .entry-note-fld { margin-bottom: 10px; }
 .entry-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
-
-/* Barra de descanso */
-#rest { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; padding: 0 12px calc(12px + env(safe-area-inset-bottom)); pointer-events: none; }
-#rest[hidden] { display: none; }
-.rest-bar {
-  position: relative; overflow: hidden; pointer-events: auto;
-  max-width: 720px; margin: 0 auto;
-  background: var(--surface); border: 1px solid var(--primary-soft-2); border-radius: 14px;
-  box-shadow: 0 12px 32px -12px rgba(0,0,0,0.45);
-}
-.rest-bar.is-done { border-color: var(--primary); }
-.rest-fill { position: absolute; inset: 0 auto 0 0; background: var(--primary-soft); transition: width 0.2s linear; }
-.rest-bar.is-done .rest-fill { background: var(--primary-soft-2); }
-.rest-body { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; flex-wrap: wrap; }
-.rest-info { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.rest-label { font-weight: 600; font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rest-time { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.rest-actions { display: flex; gap: 6px; }
 
 /* ---------- Historial ---------- */
 .session-card .session-date { margin-top: -6px; }
@@ -662,7 +643,6 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
   .sets-head { display: none; }
   .set-row { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 56px 42px; gap: 6px; }
   .myo-act { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .myo-act > .btn { grid-column: 1 / -1; }
   .detail-grid { grid-template-columns: 1fr; }
   .vol-row { grid-template-columns: minmax(72px, 1fr) 2fr auto; font-size: 12.5px; }
   .modal-panel {
@@ -671,15 +651,11 @@ small { font-size: 0.72em; font-weight: 500; color: var(--text-2); }
   }
   .modal-panel.sm { width: 100vw; }
   .modal-body { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
-  #rest { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
-  #toast { bottom: calc(150px + env(safe-area-inset-bottom)); }
+  #toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 420px) {
   .tiles { gap: 10px; }
   .session-stats { width: 100%; justify-content: space-between; }
-  .rest-body { padding: 8px 10px; }
-  .rest-time { font-size: 20px; }
-  .rest-actions .btn { padding: 6px 8px; }
   .ex-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {

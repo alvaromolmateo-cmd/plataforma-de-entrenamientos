@@ -1,11 +1,10 @@
 // Piezas de interfaz compartidas entre vistas.
 
 import { esc, icon, fmtNum } from '../ui.js';
-import { MUSCLE, MUSCLES, muscleName, typeLabel, myoPlan, profileOf, MYO_MINIS, MYO_REST_FIRST, MYO_REST } from '../catalog.js';
+import { MUSCLE, MUSCLES, muscleName, typeLabel, myoPlan, profileOf, descOf, MYO_MINIS, MYO_REST_FIRST, MYO_REST } from '../catalog.js';
 import { exerciseById } from '../store.js';
 import { fmtSet, entryTotals } from '../sets.js';
 import { sessionTotals, loadOf } from '../metrics.js';
-import { mmss } from '../timer.js';
 
 export const muscleChip = (id) => `<span class="chip chip-${esc(id)}">${MUSCLE[id]?.emoji || ''} ${esc(MUSCLE[id]?.short || 'Otro')}</span>`;
 
@@ -27,7 +26,7 @@ export function planText(plan) {
   if (!plan) return '';
   switch (plan.type) {
     case 'myo':
-      return `Myo-reps · activación al fallo + ${MYO_MINIS} mini-series`;
+      return `Myo-reps · al fallo + ${MYO_MINIS} mini-series + al fallo`;
     case 'restpause': {
       const chain = (plan.scheme || []).join('×');
       return `Rest-pause · ${chain} con ${plan.clusterRest || 15}" entre tandas`;
@@ -38,20 +37,19 @@ export function planText(plan) {
     }
     default: {
       const reps = plan.repsText || (plan.repsMin === plan.repsMax ? plan.repsMin : `${plan.repsMin}-${plan.repsMax}`);
-      const extra = plan.extra?.count ? ` (+${plan.extra.count})` : '';
       const rir = plan.rir ? ` · RIR ${esc(plan.rir)}` : '';
-      return `${plan.sets}${extra} × ${reps}${rir}`;
+      return `${plan.sets} × ${reps}${rir}`;
     }
   }
 }
 
-// Detalles secundarios: tempo, nota del entrenador, descanso.
+// Detalles secundarios: la descripción del ejercicio, el tempo y la nota del entrenador.
 export function planDetails(plan) {
   const bits = [];
+  const desc = descOf(plan);
+  if (desc) bits.push(`${icon('info')} ${esc(desc)}`);
   if (plan.tempo) bits.push(`${icon('clock')} ${esc(plan.tempo)}`);
-  if (plan.note) bits.push(`${icon('info')} ${esc(plan.note)}`);
-  if (plan.extra?.note) bits.push(`${icon('plus')} serie extra: ${esc(plan.extra.note)}`);
-  if (plan.rest) bits.push(`${icon('pause')} ${mmss(plan.rest)} de descanso`);
+  if (plan.note) bits.push(`${icon('quote')} ${esc(plan.note)}`);
   return bits.length ? `<div class="plan-details">${bits.map((b) => `<span>${b}</span>`).join('')}</div>` : '';
 }
 
@@ -68,8 +66,8 @@ export function myoGuide(activation) {
       : '';
   return `
     <div class="myo-guide">
-      <b>${activation} reps</b> → ${MYO_MINIS} mini-series de <b>${p.reps}</b> ·
-      descansa <b>${MYO_REST_FIRST}"</b> y luego <b>${MYO_REST}"</b> entre cada una · la última, al fallo.
+      <b>${activation} reps</b> → <b>${MYO_REST_FIRST}"</b> · mini de <b>${p.reps}</b> · <b>${MYO_REST}"</b> ·
+      mini de <b>${p.reps}</b> · <b>${MYO_REST}"</b> · última serie <b>al fallo</b>.
       ${verdict}
     </div>`;
 }

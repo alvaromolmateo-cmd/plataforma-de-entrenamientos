@@ -3,10 +3,8 @@
 import { esc, icon, fmtNum, toast, confirmDialog } from '../ui.js';
 import { getState, setSetting, exportJSON, importJSON, resetAll, storageInfo } from '../store.js';
 import { MYO_TABLE, MYO_REST_FIRST, MYO_REST, MYO_MINIS } from '../catalog.js';
-import { mmss } from '../timer.js';
 
 const THEMES = [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']];
-const RESTS = [60, 90, 120, 150, 180];
 
 export function render(ctx) {
   const s = getState().settings;
@@ -34,15 +32,7 @@ export function render(ctx) {
         </div>
         <p class="hint">El peso corporal se suma a la carga en los ejercicios que tiran de él (fondos), para que el tonelaje no se quede corto.</p>
 
-        <label class="lbl">Descanso por defecto</label>
-        <div class="seg">${RESTS.map((v) => `<button class="seg-btn${s.restDefault === v ? ' on' : ''}" data-rest="${v}">${mmss(v)}</button>`).join('')}</div>
-
-        <label class="lbl">Temporizador</label>
-        <div class="toggle-list">
-          ${toggle('autoTimer', 'Arrancar el descanso al marcar una serie', s.autoTimer)}
-          ${toggle('sound', 'Aviso sonoro al terminar', s.sound)}
-          ${toggle('vibrate', 'Vibración', s.vibrate)}
-        </div>
+        <p class="hint">La app no cronometra descansos: vas por sensaciones. Los únicos pautados son los de las myo-reps (${MYO_REST_FIRST}" y ${MYO_REST}"), y ahí solo te los recuerda.</p>
       </div>
 
       <div class="card">
@@ -75,7 +65,7 @@ export function render(ctx) {
         </div>
         <div>
           <h3 class="sub-h">Myo-reps</h3>
-          <p class="muted">La tabla es la de tu entrenador: serie de activación al fallo, ${MYO_REST_FIRST}" de descanso y ${MYO_MINIS} mini-series con ${MYO_REST}" entre ellas; la última, al fallo.</p>
+          <p class="muted">La tabla es la de tu entrenador: serie de activación al fallo, ${MYO_REST_FIRST}" de descanso, ${MYO_MINIS} mini-series con las reps de la tabla y ${MYO_REST}" entre medias, y una última serie al fallo.</p>
           <div class="tbl-wrap">
             <table class="tbl">
               <thead><tr><th>Activación</th><th>Mini-series</th></tr></thead>
@@ -95,25 +85,15 @@ export function render(ctx) {
   `;
 }
 
-const toggle = (key, label, on) => `
-  <label class="toggle">
-    <input type="checkbox" data-toggle="${key}"${on ? ' checked' : ''}>
-    <span>${esc(label)}</span>
-  </label>`;
-
 export function mount(root, ctx) {
   root.querySelectorAll('[data-theme]').forEach((b) => b.addEventListener('click', () => {
     setSetting('theme', b.dataset.theme);
     ctx.applyTheme();
   }));
 
-  root.querySelectorAll('[data-rest]').forEach((b) => b.addEventListener('click', () => setSetting('restDefault', Number(b.dataset.rest))));
-
   root.querySelector('[data-bodyweight]')?.addEventListener('change', (e) => setSetting('bodyweight', e.target.value === '' ? null : Number(e.target.value)));
   root.querySelector('[data-motto]')?.addEventListener('input', (e) => setSetting('motto', e.target.value, { silent: true }));
   root.querySelector('[data-motto]')?.addEventListener('change', () => ctx.refreshShell());
-
-  root.querySelectorAll('[data-toggle]').forEach((c) => c.addEventListener('change', () => setSetting(c.dataset.toggle, c.checked)));
 
   root.querySelector('[data-export]')?.addEventListener('click', () => {
     const blob = new Blob([exportJSON()], { type: 'application/json' });

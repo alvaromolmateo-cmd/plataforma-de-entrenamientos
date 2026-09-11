@@ -13,8 +13,9 @@ import * as progress from './views/progress.js';
 import * as exercises from './views/exercises.js';
 import * as settings from './views/settings.js';
 
-const views = { entrenar: train, historial: history, rutina: routine, progreso: progress, ejercicios: exercises, ajustes: settings };
-const titles = { entrenar: 'Entrenar', historial: 'Historial', rutina: 'Rutina', progreso: 'Progreso', ejercicios: 'Ejercicios', ajustes: 'Ajustes' };
+const views = { entreno: train, historial: history, rutina: routine, progreso: progress, ejercicios: exercises, ajustes: settings };
+const titles = { entreno: 'Entreno', historial: 'Historial', rutina: 'Rutina', progreso: 'Progreso', ejercicios: 'Ejercicios', ajustes: 'Ajustes' };
+const ALIASES = { entrenar: 'entreno' }; // enlaces viejos guardados en el móvil
 
 const ctx = {
   openEntry: null,
@@ -54,8 +55,9 @@ function initialWeek() {
 }
 
 function currentRoute() {
-  const raw = location.hash.replace(/^#\/?/, '').split(/[?/]/)[0] || 'entrenar';
-  return views[raw] ? raw : 'entrenar';
+  const raw = location.hash.replace(/^#\/?/, '').split(/[?/]/)[0] || 'entreno';
+  const route = ALIASES[raw] || raw;
+  return views[route] ? route : 'entreno';
 }
 
 let lastRoute = null;
@@ -99,7 +101,7 @@ function refreshShell() {
   document.querySelectorAll('[data-install-shell]').forEach((el) => { el.hidden = !ctx.installPrompt || ctx.standalone; });
   // Aviso en el menú cuando hay un entreno a medias.
   const live = !!activeSession();
-  document.querySelectorAll('[data-nav="entrenar"]').forEach((el) => el.classList.toggle('is-live', live));
+  document.querySelectorAll('[data-nav="entreno"]').forEach((el) => el.classList.toggle('is-live', live));
 }
 
 function applyTheme() {

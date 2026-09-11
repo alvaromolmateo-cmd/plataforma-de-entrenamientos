@@ -5,7 +5,7 @@ import {
   getState, exerciseById, patchRoutine, addDay, patchDay, removeDay, moveDay,
   addItem, patchItem, removeItem, moveItem,
 } from '../store.js';
-import { MUSCLES, profileOf, SET_TYPES } from '../catalog.js';
+import { MUSCLES, profileOf, SET_TYPES, descOf } from '../catalog.js';
 import { dayVolume } from '../metrics.js';
 import { profileSummary } from '../progression.js';
 import { muscleChip, typeChip, planText, planDetails, exerciseOptions, volumeBars } from './shared.js';
@@ -22,7 +22,7 @@ export function render() {
     <div class="page-head">
       <div>
         <h1>Rutina</h1>
-        <p class="muted">Lo que te ha puesto el entrenador. Editable: lo que cambies aquí sale en el próximo entreno.</p>
+        <p class="muted">Lo que te ha puesto el entrenador. Editable — también el texto de cada ejercicio — y lo que cambies aquí sale en el próximo entreno.</p>
       </div>
       <div class="page-actions">
         <button class="btn" data-add-day>${icon('plus')} Día</button>
@@ -162,11 +162,8 @@ function openItem(dayId, itemId) {
           <label class="fld">RIR <input class="input" type="text" value="${esc(item.rir || '')}" data-f="rir"></label>
           <label class="fld">RIR máx. <input class="input" type="number" min="0" max="5" value="${item.rirMax ?? 1}" data-f="rirMax"></label>
         </div>
-        <div class="form-row">
-          <label class="fld">Serie extra <input class="input" type="number" min="0" max="3" value="${item.extra?.count ?? 0}" data-f="extraCount"></label>
-          <label class="fld grow">Qué hacer en la extra <input class="input" type="text" value="${esc(item.extra?.note || '')}" data-f="extraNote"></label>
-        </div>`,
-      myo: `<p class="muted">Serie de activación al fallo y 3 mini-series según la tabla del entrenador: 6-8 reps → 2, 9-12 → 3, 13-16 → 4, 17-20 → 5. Descansos de 40" y 20".</p>`,
+`,
+      myo: `<p class="muted">Secuencia fija del entrenador. Las reps de las mini-series salen de la tabla según la serie de activación; el texto de abajo es editable.</p>`,
       restpause: `
         <div class="form-row">
           <label class="fld grow">Esquema de reps <input class="input" type="text" value="${esc((item.scheme || []).join('×'))}" data-f="scheme"></label>
@@ -193,11 +190,14 @@ function openItem(dayId, itemId) {
             ${Object.values(SET_TYPES).map((t) => `<option value="${t.id}"${item.type === t.id ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}
           </select>
         </label>
-        ${typeFields[item.type] || typeFields.normal}
-        <div class="form-row">
-          <label class="fld grow">Tempo <input class="input" type="text" placeholder='3" de bajada + 1" isométrico' value="${esc(item.tempo || '')}" data-f="tempo"></label>
-          <label class="fld">Descanso (s) <input class="input" type="number" min="0" max="600" step="15" value="${item.rest ?? 120}" data-f="rest"></label>
-        </div>
+        ${typeFields[item.type] ?? typeFields.normal}
+        <label class="fld">Descripción del ejercicio
+          <textarea class="input textarea" rows="3" placeholder="Cómo se hace, qué buscar…" data-f="desc">${esc(descOf(item))}</textarea>
+        </label>
+        <p class="hint">Este texto es el que ves en la rutina y durante el entreno.</p>
+        <label class="fld">Tempo
+          <input class="input" type="text" placeholder='3" de bajada + 1" isométrico' value="${esc(item.tempo || '')}" data-f="tempo">
+        </label>
         <label class="fld">Nota del entrenador
           <input class="input" type="text" value="${esc(item.note || '')}" data-f="note">
         </label>
@@ -210,6 +210,8 @@ function openItem(dayId, itemId) {
 
   openModal({
     render: draw,
+    // Lo tecleado se guarda en silencio para no perder el foco: al cerrar se repinta la rutina.
+    onClose: () => patchItem(dayId, itemId, {}),
     mount: (panel) => {
       panel.querySelectorAll('[data-f]').forEach((input) => {
         const field = input.dataset.f;
@@ -217,8 +219,10 @@ function openItem(dayId, itemId) {
           const v = input.value;
           const patch = {};
           if (field === 'type') {
-            // Al cambiar de tipo hay que dejar puestos los campos que ese tipo necesita.
+            // Al cambiar de tipo hay que dejar puestos los campos que ese tipo necesita
+            // y soltar la descripción del anterior para que vuelva la suya.
             patch.type = v;
+            patch.desc = null;
             const item = getState().routine.days.find((d) => d.id === dayId).items.find((i) => i.id === itemId);
             if (v === 'restpause' && !item.scheme?.length) Object.assign(patch, { scheme: [10, 10, 10], clusterRest: 20, sets: 1 });
             if (v === 'dropset' && !item.dropScheme?.length) Object.assign(patch, { dropScheme: [6, 8], dropPct: 20, dropFail: true, sets: 2 });
@@ -227,13 +231,7 @@ function openItem(dayId, itemId) {
           } else if (field === 'scheme') patch.scheme = parseList(v);
           else if (field === 'dropScheme') patch.dropScheme = parseList(v);
           else if (field === 'dropFail') patch.dropFail = v === '1';
-          else if (field === 'extraCount' || field === 'extraNote') {
-            const item = getState().routine.days.find((d) => d.id === dayId).items.find((i) => i.id === itemId);
-            const extra = { ...(item.extra || {}) };
-            if (field === 'extraCount') extra.count = Number(v) || 0;
-            else extra.note = v;
-            patch.extra = extra.count ? extra : null;
-          } else if (['sets', 'repsMin', 'repsMax', 'rirMax', 'rest', 'clusterRest', 'dropPct'].includes(field)) {
+          else if (['sets', 'repsMin', 'repsMax', 'rirMax', 'clusterRest', 'dropPct'].includes(field)) {
             patch[field] = v === '' ? null : Number(v);
           } else patch[field] = v;
           patchItem(dayId, itemId, patch, { silent: !rerender });

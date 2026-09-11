@@ -1,4 +1,5 @@
-// Vista «Entrenar»: arranque de la sesión y registro en vivo, ejercicio a ejercicio.
+// Vista «Entreno»: arranque de la sesión y registro en vivo, ejercicio a ejercicio.
+// Sin temporizadores: los descansos van por sensaciones, salvo los de las myo-reps, que se indican como texto.
 
 import { esc, icon, fmtNum, toast, confirmDialog, openModal, closeModal, modalHeader } from '../ui.js';
 import {
@@ -7,11 +8,10 @@ import {
   exerciseById, historyOf, allSessions,
 } from '../store.js';
 import { todayKey, dayLabel } from '../dates.js';
-import { myoPlan, MYO_REST_FIRST, MYO_REST } from '../catalog.js';
+import { myoPlan, MYO_MINIS, MYO_BLOCKS, MYO_REST_FIRST, MYO_REST } from '../catalog.js';
 import { fmtSet, fmtWeight, num, hasData, parseReps, entryTotals } from '../sets.js';
 import { suggest, dropWeights } from '../progression.js';
 import { sessionTotals, nextDay, dayVolume, sessionPRs, loadOf, weekNumber, mondayOf } from '../metrics.js';
-import { startRest, mmss } from '../timer.js';
 import {
   muscleChip, typeChip, planText, planDetails, myoGuide, sessionSummary,
   dayOptions, exerciseOptions, FEELS,
@@ -35,7 +35,7 @@ function renderStart(ctx) {
   return `
     <div class="page-head">
       <div>
-        <h1>Entrenar</h1>
+        <h1>Entreno</h1>
         <p class="muted">${esc(dayLabel(todayKey()))} · semana ${weekNumber(todayKey(), st.routine.startDate)} de «${esc(st.routine.name)}»</p>
       </div>
     </div>
@@ -191,7 +191,6 @@ function renderEntry(session, entry, index, open) {
             <div class="btn-row">
               <button class="btn sm" data-add-set="${esc(entry.id)}">${icon('plus')} Serie</button>
               ${entry.sets.length > 1 ? `<button class="btn sm" data-del-set="${esc(entry.id)}">${icon('minus')} Serie</button>` : ''}
-              ${entry.plan.rest ? `<button class="btn sm" data-rest-start="${entry.plan.rest}" data-rest-label="Descanso · ${esc(ex.name)}">${icon('pause')} Descanso ${mmss(entry.plan.rest)}</button>` : ''}
             </div>
             <div class="btn-row">
               <button class="icon-btn sm" data-move-entry="${esc(entry.id)}" data-dir="-1" aria-label="Subir">${icon('arrow-up')}</button>
@@ -231,17 +230,17 @@ function renderNormal(entry, ex) {
             value="${esc(set.raw || (set.r ?? ''))}" data-set="${esc(entry.id)}" data-i="${i}" data-field="raw">
           <input class="cell-input" type="number" inputmode="numeric" step="1" min="0" max="10" placeholder="${esc(String(plan.rirMax ?? 0))}"
             value="${set.rir ?? ''}" data-set="${esc(entry.id)}" data-i="${i}" data-field="rir">
-          <button class="set-ok" data-ok="${esc(entry.id)}" data-i="${i}" data-secs="${plan.rest || 120}" aria-label="Serie hecha">${icon('check')}</button>
+          <button class="set-ok" data-ok="${esc(entry.id)}" data-i="${i}" aria-label="Serie hecha">${icon('check')}</button>
         </div>`).join('')}
-    </div>
-    ${plan.extra?.note && entry.sets.length > normal ? `<p class="hint">La serie extra: ${esc(plan.extra.note)}.</p>` : ''}`;
+    </div>`;
 }
 
+// La secuencia es fija: activación al fallo, 40", mini de la tabla, 20", mini de la tabla, 20" y última al fallo.
 function renderMyo(entry, ex) {
   const set = entry.sets[0] || {};
   const act = num(set.r);
   const p = myoPlan(act);
-  const minis = set.minis || [null, null, null];
+  const minis = set.minis && set.minis.length ? set.minis : Array.from({ length: MYO_BLOCKS }, () => null);
   return `
     <div class="sets sets-myo">
       <div class="myo-act">
@@ -250,18 +249,21 @@ function renderMyo(entry, ex) {
           <input class="cell-input" type="number" inputmode="numeric" step="1" min="0" placeholder="reps"
             value="${set.r ?? ''}" data-set="${esc(entry.id)}" data-i="0" data-field="r" data-myo-act>
         </label>
-        <button class="btn sm btn-primary" data-rest-start="${MYO_REST_FIRST}" data-rest-label="Myo · ${esc(ex.name)}">${icon('pause')} ${MYO_REST_FIRST}"</button>
       </div>
       <div data-myo-guide>${myoGuide(act)}</div>
       <div class="myo-minis">
-        ${minis.map((v, k) => `
-          <label class="mini">
-            <span>Mini ${k + 1}${act ? ` · ${p.reps}` : ''}</span>
-            <input class="cell-input" type="number" inputmode="numeric" step="1" min="0" placeholder="${act ? p.reps : '—'}"
+        ${minis.map((v, k) => {
+          const fail = k >= MYO_MINIS;
+          return `
+          <label class="mini${fail ? ' mini-fail' : ''}">
+            <span>${fail ? 'Final · al fallo' : `Mini ${k + 1}${act ? ` · ${p.reps}` : ''}`}</span>
+            <input class="cell-input" type="number" inputmode="numeric" step="1" min="0" placeholder="${fail ? 'fallo' : (act ? p.reps : '—')}"
               value="${v ?? ''}" data-set="${esc(entry.id)}" data-i="0" data-field="mini" data-k="${k}">
-            <button class="set-ok sm" data-ok="${esc(entry.id)}" data-i="0" data-secs="${MYO_REST}" aria-label="Mini hecha">${icon('check')}</button>
-          </label>`).join('')}
+            <button class="set-ok sm" data-ok="${esc(entry.id)}" data-i="0" aria-label="Tramo hecho">${icon('check')}</button>
+          </label>`;
+        }).join('')}
       </div>
+      <p class="hint">${MYO_REST_FIRST}" tras la serie de activación y ${MYO_REST}" entre tramos. Los cuentas tú: aquí no hay temporizador.</p>
     </div>`;
 }
 
@@ -281,7 +283,7 @@ function renderRestPause(entry, ex) {
             <span>${k + 1}.ª · ${scheme[k] ?? '—'}</span>
             <input class="cell-input" type="number" inputmode="numeric" step="1" min="0" placeholder="${scheme[k] ?? ''}"
               value="${v ?? ''}" data-set="${esc(entry.id)}" data-i="0" data-field="cluster" data-k="${k}">
-            <button class="set-ok sm" data-ok="${esc(entry.id)}" data-i="0" data-secs="${entry.plan.clusterRest || 15}" aria-label="Tanda hecha">${icon('check')}</button>
+            <button class="set-ok sm" data-ok="${esc(entry.id)}" data-i="0" aria-label="Tanda hecha">${icon('check')}</button>
           </label>`).join('')}
       </div>
     </div>`;
@@ -310,9 +312,6 @@ function renderDrop(entry, ex) {
             </div>
           </div>`;
       }).join('')}
-      <div class="btn-row">
-        <button class="btn sm" data-rest-start="${entry.plan.rest || 150}" data-rest-label="Descanso · ${esc(ex.name)}">${icon('pause')} Descanso</button>
-      </div>
     </div>`;
 }
 
@@ -372,17 +371,9 @@ export function mount(root, ctx) {
     });
   });
 
-  // --- Botón de serie hecha: arranca el descanso ---
+  // --- Botón de serie hecha: solo la marca, aquí ya no hay descansos que contar ---
   root.querySelectorAll('[data-ok]').forEach((b) => b.addEventListener('click', () => {
-    const secs = Number(b.dataset.secs) || getState().settings.restDefault;
-    const entry = session.entries.find((e) => e.id === b.dataset.ok);
-    const ex = entry ? exerciseById(entry.exerciseId) : null;
     b.closest('.set-row, .mini')?.classList.add('is-filled');
-    if (getState().settings.autoTimer) startRest(secs, ex ? `Descanso · ${ex.name}` : 'Descanso');
-  }));
-
-  root.querySelectorAll('[data-rest-start]').forEach((b) => b.addEventListener('click', () => {
-    startRest(Number(b.dataset.restStart), b.dataset.restLabel || 'Descanso');
   }));
 
   // --- Sugerencia y copia ---
@@ -475,6 +466,7 @@ function refreshLive(root, session, entryId, input) {
     if (guide) guide.innerHTML = myoGuide(num(input.value));
     const p = myoPlan(num(input.value));
     root.querySelectorAll(`[data-entry="${CSS.escape(entryId)}"] .myo-minis .mini`).forEach((el, k) => {
+      if (k >= MYO_MINIS) return;
       el.querySelector('span').textContent = `Mini ${k + 1}${input.value ? ` · ${p.reps}` : ''}`;
       el.querySelector('input').placeholder = input.value ? p.reps : '—';
     });

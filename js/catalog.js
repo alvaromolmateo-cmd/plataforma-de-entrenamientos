@@ -56,9 +56,9 @@ export const PROGRESSION = {
 export const profileOf = (muscle) => PROGRESSION[muscle] || PROGRESSION.pecho;
 
 // ---------- Myo-reps ----------
-// Tabla del entrenador: según las reps de la serie de activación (llevada al fallo),
-// se descansan 40" y se hacen 3 mini-series con las reps indicadas, con 20" entre ellas.
-// La última va hasta el fallo.
+// Secuencia del entrenador, siempre la misma:
+//   1.ª serie al fallo → 40" → mini-serie de la tabla → 20" → mini-serie de la tabla → 20" → serie final al fallo.
+// Las reps de las mini-series salen de la tabla según lo que hayas sacado en la serie de activación.
 export const MYO_TABLE = [
   { min: 6, max: 8, reps: 2 },
   { min: 9, max: 12, reps: 3 },
@@ -68,13 +68,14 @@ export const MYO_TABLE = [
 
 export const MYO_REST_FIRST = 40; // segundos tras la serie de activación
 export const MYO_REST = 20; // segundos entre mini-series
-export const MYO_MINIS = 3; // número de mini-series
+export const MYO_MINIS = 2; // mini-series con las reps de la tabla
+export const MYO_BLOCKS = MYO_MINIS + 1; // tramos tras la activación: las mini-series y la final al fallo
 export const MYO_TARGET = [9, 12]; // banda de activación en la que se busca estar
 
 // Prescripción de mini-series para unas reps de activación dadas.
 export function myoPlan(activation) {
   const a = Number(activation);
-  const base = { minis: MYO_MINIS, restFirst: MYO_REST_FIRST, rest: MYO_REST };
+  const base = { minis: MYO_MINIS, blocks: MYO_BLOCKS, restFirst: MYO_REST_FIRST, rest: MYO_REST };
   if (!a || a < 6) return { ...base, reps: 2, band: null, verdict: 'heavy' };
   const band = MYO_TABLE.find((b) => a >= b.min && a <= b.max);
   if (!band) {
@@ -83,6 +84,20 @@ export function myoPlan(activation) {
   }
   return { ...base, reps: band.reps, band, verdict: 'ok' };
 }
+
+// ---------- Descripción de cada ejercicio ----------
+// Todo ejercicio de la rutina arrastra un texto descriptivo editable. Si no se ha tocado,
+// se usa el de su técnica.
+export function defaultDesc(type) {
+  if (type === 'myo') {
+    return `Serie de activación al fallo, ${MYO_REST_FIRST}" de descanso, mini-serie con las reps de la tabla del entrenador `
+      + `(6-8 reps → 2, 9-12 → 3, 13-16 → 4, 17-20 → 5), ${MYO_REST}" de descanso, otra mini-serie igual, `
+      + `${MYO_REST}" de descanso y una última serie al fallo.`;
+  }
+  return '';
+}
+
+export const descOf = (item) => (item && item.desc != null ? item.desc : defaultDesc(item && item.type));
 
 // ---------- Tipos de serie ----------
 export const SET_TYPES = {
